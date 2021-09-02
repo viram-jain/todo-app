@@ -53,7 +53,7 @@ func init() {
 	db := mongo.URI{
 		Username: "",
 		Password: "",
-		Host:     os.Getenv("HOST"),
+		Host:     os.Getenv("MONGO_HOST"),
 		DB:       os.Getenv("DATABASE_NAME"),
 		Port:     os.Getenv("MONGO_PORT"),
 	}
