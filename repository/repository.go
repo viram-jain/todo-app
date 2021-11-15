@@ -26,22 +26,6 @@ var (
 	sugarLogger                 = logger.InitLogger()
 )
 
-type Response struct {
-	Status  int         `json:"status"`
-	Message string      `json:"message"`
-	Data    interface{} `json:"data"`
-	Error   interface{} `json:"error,omitempty"`
-}
-
-type UpdateResult struct {
-	ID    string `json:"id"`
-	Title string `json:"title"`
-}
-
-type DeleteResult struct {
-	ID string `json:"id"`
-}
-
 // create connection with mongo db
 func init() {
 	err := godotenv.Load(constant.Envfile)
@@ -76,7 +60,7 @@ func CreateTodo(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewDecoder(r.Body).Decode(&task)
 	_, err := collection.InsertOne(task)
 	if err != nil {
-		responseData := &Response{
+		responseData := &model.Response{
 			Status:  http.StatusInternalServerError,
 			Message: "Failed to insert todo",
 			Error:   err,
@@ -89,7 +73,7 @@ func CreateTodo(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	responseData := &Response{
+	responseData := &model.Response{
 		Status:  http.StatusCreated,
 		Message: "Todo inserted successfully",
 		Data:    task,
@@ -106,7 +90,7 @@ func CreateTodo(w http.ResponseWriter, r *http.Request) {
 func GetAllTodos(w http.ResponseWriter, r *http.Request) {
 	results, err := collection.FindAll()
 	if err != nil {
-		responseData := &Response{
+		responseData := &model.Response{
 			Status:  http.StatusInternalServerError,
 			Message: "Failed to retrieve todos",
 			Error:   err,
@@ -119,7 +103,7 @@ func GetAllTodos(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	responseData := &Response{
+	responseData := &model.Response{
 		Status:  http.StatusOK,
 		Message: "Retrieved todos",
 		Data:    results,
@@ -137,7 +121,7 @@ func GetTodoById(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	var result *model.TodoModel
 	if !mongo_bson.IsObjectIdHex(params[constant.ID]) {
-		responseData := &Response{
+		responseData := &model.Response{
 			Status:  http.StatusBadRequest,
 			Message: "Failed to retrieve todo",
 			Error:   "Invalid ID provided",
@@ -157,7 +141,7 @@ func GetTodoById(w http.ResponseWriter, r *http.Request) {
 		filter := kaleyra_bson.D{{Key: constant.Key, Value: id}}
 		result, err := collection.FindOne(filter)
 		if err != nil {
-			responseData := &Response{
+			responseData := &model.Response{
 				Status:  http.StatusInternalServerError,
 				Message: "Failed to retrieve todo",
 				Error:   err,
@@ -173,7 +157,7 @@ func GetTodoById(w http.ResponseWriter, r *http.Request) {
 	}
 
 	result = postCache.Get(id.String())
-	responseData := &Response{
+	responseData := &model.Response{
 		Status:  http.StatusOK,
 		Message: "Retrieved todo",
 		Data:    result,
@@ -191,7 +175,7 @@ func GetTodoById(w http.ResponseWriter, r *http.Request) {
 func UpdateTodo(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	if !mongo_bson.IsObjectIdHex(params[constant.ID]) {
-		responseData := &Response{
+		responseData := &model.Response{
 			Status:  http.StatusBadRequest,
 			Message: "Failed to update todo",
 			Error:   "Invalid ID provided",
@@ -210,7 +194,7 @@ func UpdateTodo(w http.ResponseWriter, r *http.Request) {
 
 	err := json.NewDecoder(r.Body).Decode(&t)
 	if err != nil {
-		responseData := &Response{
+		responseData := &model.Response{
 			Status:  http.StatusBadRequest,
 			Message: "Failed to update todo",
 			Error:   err,
@@ -225,7 +209,7 @@ func UpdateTodo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if t.Title == "" {
-		responseData := &Response{
+		responseData := &model.Response{
 			Status:  http.StatusBadRequest,
 			Message: "Failed to update todo",
 			Error:   "Empty title provided",
@@ -246,7 +230,7 @@ func UpdateTodo(w http.ResponseWriter, r *http.Request) {
 
 	_, err = collection.UpsertOne(filter, update)
 	if err != nil {
-		responseData := &Response{
+		responseData := &model.Response{
 			Status:  http.StatusInternalServerError,
 			Message: "Failed to update todo",
 			Error:   err,
@@ -260,12 +244,12 @@ func UpdateTodo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	insertResult := &UpdateResult{
+	insertResult := &model.UpdateResult{
 		ID:    id.Hex(),
 		Title: t.Title,
 	}
 
-	responseData := &Response{
+	responseData := &model.Response{
 		Status:  http.StatusOK,
 		Message: "Todo updated successfully",
 		Data:    insertResult,
@@ -283,7 +267,7 @@ func UpdateTodo(w http.ResponseWriter, r *http.Request) {
 func DeleteTodo(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	if !mongo_bson.IsObjectIdHex(params[constant.ID]) {
-		responseData := &Response{
+		responseData := &model.Response{
 			Status:  http.StatusBadRequest,
 			Message: "Failed to delete todo",
 			Error:   "Invalid ID provided",
@@ -301,7 +285,7 @@ func DeleteTodo(w http.ResponseWriter, r *http.Request) {
 	filter := kaleyra_bson.D{{Key: constant.Key, Value: id}}
 	res, err := collection.DeleteOne(filter)
 	if err != nil {
-		responseData := &Response{
+		responseData := &model.Response{
 			Status:  http.StatusInternalServerError,
 			Message: "Failed to delete todo",
 			Error:   err,
@@ -316,7 +300,7 @@ func DeleteTodo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if res == 0 {
-		responseData := &Response{
+		responseData := &model.Response{
 			Status:  http.StatusBadRequest,
 			Message: "ID not found",
 			Error:   err,
@@ -330,11 +314,11 @@ func DeleteTodo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	deleteData := &DeleteResult{
+	deleteData := &model.DeleteResult{
 		ID: id.Hex(),
 	}
 
-	responseData := &Response{
+	responseData := &model.Response{
 		Status:  http.StatusOK,
 		Message: "Todo deleted successfully",
 		Data:    deleteData,
